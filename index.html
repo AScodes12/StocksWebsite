@@ -186,8 +186,8 @@
 
                 <div class="dashboard-panel chart-card">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h2 style="margin:0; font-size:16px;">Intraday / Historical Grid</h2>
-                        <span style="color:var(--text-muted); font-size:13px;">Interval (1mo / 1d)</span>
+                        <h2 style="margin:0; font-size:16px;">Intraday Performance Graph</h2>
+                        <span style="color:var(--text-muted); font-size:13px;">Live Intraday Loop (5m)</span>
                     </div>
                     <div class="chart-wrapper"><canvas id="priceChart"></canvas></div>
                 </div>
@@ -252,7 +252,6 @@
 
         function populateTicker() {
             const target = document.getElementById('ticker-target');
-            // Duplicate multiple arrays arrays together for smooth infinite looping layout behavior
             const loops = [...Object.values(globalData), ...Object.values(globalData), ...Object.values(globalData)];
             target.innerHTML = loops.map(stock => `
                 <div class="ticker__item" onclick="displayProfile('${stock.symbol}')">
@@ -323,17 +322,17 @@
                 data: {
                     labels: stock.history_dates,
                     datasets: [{
-                        label: 'Close Price', data: stock.history_prices,
+                        label: 'Price', data: stock.history_prices,
                         borderColor: stock.is_positive ? '#4ad9a1' : '#ff3b30', 
                         backgroundColor: stock.is_positive ? 'rgba(74, 217, 161, 0.06)' : 'rgba(255, 59, 48, 0.06)',
-                        tension: 0.25, pointRadius: 1, borderWidth: 2, fill: true
+                        tension: 0.15, pointRadius: 0, borderWidth: 2, fill: true
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { family: 'Space Grotesk' } } },
+                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { family: 'Space Grotesk' }, maxTicksLimit: 12 } },
                         y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b', font: { family: 'Space Grotesk' } } }
                     }
                 }
