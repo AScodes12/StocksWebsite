@@ -3,242 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sleek Live Stock Ticker</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Live Raspberry Pi Stock Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* REPLICATES BOTH YOUR ORIGINAL STYLES EXACTLY */
-        :root { --bg-color: #0b0c0e; --text-main: #ffffff; --up-color: #00c805; --down-color: #ff3b30; }
-        body { margin: 0; font-family: 'Space Grotesk', sans-serif; background-color: #0b0c0e; color: var(--text-main); padding: 16px 0; -webkit-font-smoothing: antialiased; }
-        .hidden { display: none !important; }
-        
-        /* TICKER SYSTEM */
-        .ticker-wrap { width: 100%; overflow: hidden; background-color: transparent; box-sizing: border-box; padding: 20px 0; display: flex; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06); }
-        .ticker { display: flex; white-space: nowrap; padding-left: 100%; animation: ticker 240s linear infinite; }
-        .ticker__item { display: inline-flex; align-items: center; padding: 0 26px; font-size: 16px; font-weight: 500; letter-spacing: 0.02em; border-left: 1px solid rgba(255,255,255,0.08); text-decoration: none; color: inherit; cursor: pointer; }
-        .ticker__item:first-child { border-left: none; }
-        .ticker__item:hover { transform: scale(1.02); background-color: rgba(255,255,255,0.02); }
-        .ticker__symbol { font-weight: 700; color: var(--text-main); margin-right: 10px; }
-        .ticker__price { font-weight: 600; margin-right: 8px; color: #e7eaf6; }
-        .ticker__session { font-size: 11px; color: #8f95a1; text-transform: uppercase; letter-spacing: 0.08em; margin-right: 10px; }
-        .ticker__change { font-size: 16px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
-        .up-trend { color: var(--up-color); }
-        .down-trend { color: var(--down-color); }
-        @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
-
-        /* DASHBOARD LAYOUT */
-        .container { max-width: 1100px; margin: 0 auto; padding: 24px; background: #060b14; min-height: 100vh; color: #edf2ff; border-radius: 16px; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 22px; }
-        .header__title { margin: 0; font-size: 32px; font-weight: 700; }
-        .header__subtitle { margin: 6px 0 0; color: #90a3c4; font-size: 14px; }
-        .badge { display: inline-flex; align-items: center; padding: 8px 14px; font-size: 12px; text-transform: uppercase; border-radius: 999px; background: rgba(74, 217, 161, 0.12); color: #c8ffe4; }
-        .company-badge { width: 72px; height: 72px; border-radius: 22px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: #e8ffef; font-size: 20px; font-weight: 700; margin-right: 18px; }
-        .hero-panel { background: #0f172b; border: 1px solid rgba(255,255,255,0.08); border-radius: 22px; padding: 28px; margin-bottom: 24px; display: grid; grid-template-columns: 1fr auto; gap: 26px; align-items: center; }
-        .hero-price { display: flex; flex-direction: column; gap: 10px; }
-        .hero-price__value { font-size: 54px; font-weight: 800; color: #ffffff; }
-        .hero-price__change { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px; background: rgba(255,255,255,0.06); font-size: 15px; }
-        .hero-price__change.up-trend { background: rgba(74,217,161,0.18); color: #b8ffdc; }
-        .hero-price__change.down-trend { background: rgba(255,59,48,0.18); color: #ffbeb7; }
-        .hero-metrics { display: grid; gap: 12px; }
-        .metric-pill { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; padding: 12px 16px; color: #d9e6fc; font-size: 13px; }
-        .insight-panel { background: rgba(11, 19, 33, 0.94); border: 1px solid rgba(255,255,255,0.08); border-radius: 22px; padding: 24px; margin-bottom: 24px; }
-        .insight-list { display: grid; gap: 14px; }
-        .insight-item { background: rgba(16, 26, 44, 0.92); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 18px; font-size: 14px; line-height: 1.7; }
-        .chart-card { background: linear-gradient(180deg, rgba(13, 22, 37, 0.98), rgba(9, 14, 25, 0.98)); border: 1px solid rgba(74, 217, 161, 0.16); border-radius: 24px; padding: 26px; margin-bottom: 30px; }
-        .chart-wrapper { position: relative; width: 100%; min-height: 360px; }
-        .overview-card { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px; margin-bottom: 24px; }
-        .stat { padding: 18px 20px; border-radius: 18px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); }
-        .stat__label { display: block; font-size: 11px; color: #90a3c4; margin-bottom: 8px; text-transform: uppercase; }
-        .stat__value { font-size: 18px; font-weight: 700; color: #f7faff; }
-        .back-link { display: inline-flex; align-items: center; gap: 8px; color: #8f95a1; text-decoration: none; font-size: 14px; margin-bottom: 18px; cursor: pointer; }
-        .summary-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 24px; }
-        .summary-text { margin: 0; color: #e7ecf7; line-height: 1.75; font-size: 15px; }
+        :root { --bg: #0b0c0e; --panel: #12141c; --text: #ffffff; --up: #00c805; --down: #ff3b30; }
+        body { margin: 0; font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--text); padding: 24px; }
+        .grid { display: grid; grid-template-columns: 300px 1fr; gap: 24px; max-width: 1400px; margin: 0 auto; }
+        .sidebar { background: var(--panel); border-radius: 16px; padding: 16px; height: fit-content; }
+        .stock-item { display: flex; justify-content: space-between; padding: 14px; border-bottom: 1px solid #202430; cursor: pointer; border-radius: 8px; transition: 0.2s; }
+        .stock-item:hover { background: rgba(255,255,255,0.05); }
+        .up-text { color: var(--up); } .down-text { color: var(--down); }
+        .main-panel { background: var(--panel); border-radius: 16px; padding: 32px; min-height: 500px; }
+        .hidden { display: none; }
+        .chart-box { height: 300px; margin-top: 24px; position: relative; }
     </style>
 </head>
 <body>
 
-    <div id="view-ticker">
-        <div class="ticker-wrap">
-            <div class="ticker" id="ticker-strip">Loading Live Server Data Ticker Streams...</div>
+    <div class="grid">
+        <div class="sidebar">
+            <h3 style="margin-top:0;">Pi Watchlist</h3>
+            <div id="ticker-list">Connecting to Raspberry Pi...</div>
+        </div>
+
+        <div class="main-panel">
+            <div id="empty-state"><h2>Select a stock to view live data from your Pi</h2></div>
+            <div id="content-state" class="hidden">
+                <h1 id="stock-title">Company Profile</h1>
+                <h2 id="stock-price">$0.00</h2>
+                <p id="stock-change">0.00%</p>
+                <hr style="border-color:#202430;">
+                <p id="stock-summary"></p>
+                <div class="chart-box">
+                    <canvas id="detailsChart"></canvas>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="view-detail" class="container hidden">
-        <a class="back-link" onclick="window.location.hash = ''">← Back to ticker loop</a>
-        <div class="header">
-            <div style="display:flex; align-items:center; gap:16px;">
-                <span class="company-badge" id="lbl-symbol">--</span>
-                <div>
-                    <h1 class="header__title" id="lbl-name">Loading...</h1>
-                    <p class="header__subtitle" id="lbl-subtitle">Exchange · Sector</p>
-                </div>
-            </div>
-            <span class="badge" id="lbl-session">Regular</span>
-        </div>
-
-        <div class="hero-panel">
-            <div class="hero-price">
-                <div class="hero-price__value" id="lbl-price">$0.00</div>
-                <div class="hero-price__change" id="lbl-change">
-                    <span id="lbl-trend-arrow">▲</span> <span id="lbl-change-text">0.00%</span>
-                </div>
-            </div>
-            <div class="hero-metrics">
-                <div class="metric-pill" id="m-cap">Market Cap: --</div>
-                <div class="metric-pill" id="m-pe">PE Ratio: --</div>
-                <div class="metric-pill" id="m-vol">Volume: --</div>
-                <div class="metric-pill" id="m-avgvol">Avg Volume: --</div>
-                <div class="metric-pill" id="m-rate">Rating: --</div>
-                <div class="metric-pill" id="m-earn">Earnings: --</div>
-            </div>
-        </div>
-
-        <div class="insight-panel">
-            <p style="margin:0 0 14px; font-weight:700;">Key takeaways</p>
-            <div class="insight-list" id="insight-container"></div>
-        </div>
-
-        <div class="chart-card">
-            <h3 style="margin:0 0 14px;" id="lbl-history-range">Price Action History</h3>
-            <div class="chart-wrapper"><canvas id="priceChart"></canvas></div>
-        </div>
-
-        <div class="overview-card">
-            <div class="stat"><span class="stat__label">Previous Close</span><span class="stat__value" id="o-prevclose">--</span></div>
-            <div class="stat"><span class="stat__label">Today Change</span><span class="stat__value" id="o-daychange">--</span></div>
-            <div class="stat"><span class="stat__label">Open</span><span class="stat__value" id="o-open">--</span></div>
-            <div class="stat"><span class="stat__label">Day Range</span><span class="stat__value" id="o-dayrange">--</span></div>
-            <div class="stat"><span class="stat__label">52W Range</span><span class="stat__value" id="o-52wrange">--</span></div>
-        </div>
-
-        <div class="summary-card">
-            <p style="margin:0 0 14px; text-transform:uppercase; font-size:12px; color:#8ea9c9;">About Company Profile</p>
-            <p class="summary-text" id="lbl-summary">--</p>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // ⚠️ REPLACE THIS WITH YOUR PUBLIC TUNNEL URL FROM STEP 3
-        const API_BASE_URL = "https://cdc31374012381.lhr.life/";
+        // CHANGE THIS TO YOUR ACTIVE LOCALTUNNEL LINK EVERY TIME YOU RESTART IT
+        const TUNNEL_URL = "https://cruel-sides-exist.loca.lt/api/stocks";
 
-        let activeChartInstance = null;
+        let globalData = {};
+        let activeChart = null;
 
-        async function fetchTickerLoop() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/ticker`);
-                const data = await res.json();
-                
-                // Mirror the backend script's layout duplication logic
-                const tripledList = [...data.watchlist, ...data.watchlist, ...data.watchlist];
-                
-                const strip = document.getElementById('ticker-strip');
-                strip.innerHTML = tripledList.map(symbol => {
-                    const s = data.stocks.find(item => item.symbol === symbol);
-                    if(!s) return '';
-                    return `
-                        <div class="ticker__item" onclick="window.location.hash = '#/stock/${s.symbol}'">
-                            <span class="ticker__symbol">${s.symbol}</span>
-                            <span class="ticker__price">$${s.price.toFixed(2)}</span>
-                            <span class="ticker__session">${s.session_label}</span>
-                            <span class="ticker__change ${s.is_positive ? 'up-trend' : 'down-trend'}">
-                                <span>${s.is_positive ? '▲' : '▼'}</span>
-                                <span>${s.is_positive ? '+' : ''}${s.change_percent.toFixed(2)}%</span>
-                            </span>
-                        </div>
-                    `;
-                }).join('');
-            } catch (err) {
-                document.getElementById('ticker-strip').innerText = "Live API Server unreachable. Ensure Tunnel is running on the Pi.";
-            }
+        fetch(TUNNEL_URL)
+            .then(res => res.json())
+            .then(data => {
+                globalData = data;
+                renderWatchlist();
+            }).catch(err => {
+                document.getElementById('ticker-list').innerText = "Failed to connect to Pi tunnel.";
+                console.error(err);
+            });
+
+        function renderWatchlist() {
+            const container = document.getElementById('ticker-list');
+            container.innerHTML = '';
+            Object.values(globalData).forEach(stock => {
+                const item = document.createElement('div');
+                item.className = 'stock-item';
+                item.onclick = () => showDetails(stock.symbol);
+                item.innerHTML = `
+                    <div><strong>${stock.symbol}</strong></div>
+                    <div style="text-align:right;">
+                        <div>${stock.price}</div>
+                        <div class="${stock.is_positive ? 'up-text' : 'down-text'}">${stock.change}</div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
         }
 
-        async function fetchStockDetail(symbol) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/stock/${symbol}`);
-                const s = await res.json();
+        function showDetails(symbol) {
+            const stock = globalData[symbol];
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('content-state').classList.remove('hidden');
+            
+            document.getElementById('stock-title').innerText = `${stock.name} (${stock.symbol})`;
+            document.getElementById('stock-price').innerText = stock.price;
+            document.getElementById('stock-change').innerText = stock.change;
+            document.getElementById('stock-change').className = stock.is_positive ? 'up-text' : 'down-text';
+            document.getElementById('stock-summary').innerText = stock.summary;
 
-                document.getElementById('lbl-symbol').innerText = s.symbol;
-                document.getElementById('lbl-name').innerText = s.name;
-                document.getElementById('lbl-subtitle').innerText = `${s.exchange} · ${s.sector} / ${s.industry}`;
-                document.getElementById('lbl-session').innerText = s.session_label;
-                document.getElementById('lbl-price').innerText = s.formatted_price;
-                document.getElementById('lbl-change-text').innerText = s.formatted_change;
-                document.getElementById('lbl-trend-arrow').innerText = s.is_positive ? '▲' : '▼';
-                document.getElementById('lbl-change').className = `hero-price__change ${s.is_positive ? 'up-trend' : 'down-trend'}`;
+            if (activeChart) activeChart.destroy();
 
-                document.getElementById('m-cap').innerText = `Market Cap: ${s.formatted_market_cap}`;
-                document.getElementById('m-pe').innerText = `PE Ratio: ${s.formatted_pe_ratio}`;
-                document.getElementById('m-vol').innerText = `Volume: ${s.formatted_volume}`;
-                document.getElementById('m-avgvol').innerText = `Avg Volume: ${s.formatted_avg_volume}`;
-                document.getElementById('m-rate').innerText = `Rating: ${s.recommendation_key}`;
-                document.getElementById('m-earn').innerText = `Earnings: ${s.formatted_earnings_date}`;
-
-                document.getElementById('o-prevclose').innerText = s.formatted_previous_close;
-                document.getElementById('o-daychange').innerText = `${s.formatted_change_amount} / ${s.formatted_change}`;
-                document.getElementById('o-open').innerText = s.formatted_open;
-                document.getElementById('o-dayrange').innerText = s.day_range;
-                document.getElementById('o-52wrange').innerText = s.fifty_two_week_range;
-                document.getElementById('lbl-summary').innerText = s.business_summary;
-
-                document.getElementById('insight-container').innerHTML = s.key_insights.map(i => `
-                    <div class="insight-item"><strong style="color:#c4d7ff; display:block; margin-bottom:4px;">${i.title}</strong><p style="margin:0;">${i.detail}</p></div>
-                `).join('');
-
-                document.getElementById('lbl-history-range').innerText = `Price Action History (${s.history_period_label})`;
-                
-                const ctx = document.getElementById('priceChart');
-                if (activeChartInstance) activeChartInstance.destroy();
-                activeChartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: s.history_dates,
-                        datasets: [{
-                            data: s.history_prices,
-                            borderColor: '#4ad9a1',
-                            backgroundColor: 'rgba(74, 217, 161, 0.12)',
-                            tension: 0.2,
-                            pointRadius: s.history_dates.length > 50 ? 0 : 2,
-                            fill: true,
-                            borderWidth: 2
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            x: { grid: { display: false }, ticks: { color: '#8f95a1' } },
-                            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8f95a1' } }
-                        }
-                    }
-                });
-            } catch (err) {
-                console.error("Detail load error", err);
-            }
+            const ctx = document.getElementById('detailsChart').getContext('2d');
+            activeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: stock.history_dates,
+                    datasets: [{
+                        label: 'Price (Past Month)',
+                        data: stock.history_prices,
+                        borderColor: stock.is_positive ? '#00c805' : '#ff3b30',
+                        backgroundColor: 'rgba(255,255,255,0.01)',
+                        tension: 0.2
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
         }
-
-        function handleRouting() {
-            const hash = window.location.hash;
-            if (hash.startsWith('#/stock/')) {
-                const sym = hash.replace('#/stock/', '');
-                document.getElementById('view-ticker').classList.add('hidden');
-                document.getElementById('view-detail').classList.remove('hidden');
-                fetchStockDetail(sym);
-            } else {
-                document.getElementById('view-detail').classList.add('hidden');
-                document.getElementById('view-ticker').classList.remove('hidden');
-                fetchTickerLoop();
-            }
-        }
-
-        window.addEventListener('hashchange', handleRouting);
-        window.addEventListener('DOMContentLoaded', () => {
-            handleRouting();
-            // Refresh ticker data every 60 seconds automatically
-            setInterval(() => { if(!window.location.hash) fetchTickerLoop(); }, 60000);
-        });
     </script>
 </body>
 </html>
