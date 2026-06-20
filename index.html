@@ -76,10 +76,17 @@
         }
         .header__title { margin: 0; font-size: 34px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; }
         .header__subtitle { margin: 6px 0 0; color: var(--text-muted); font-size: 14px; }
+        
+        /* Search Bar Controller Styling */
+        .search-container { display: flex; gap: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--panel-border); padding: 6px 8px; border-radius: 14px; align-items: center; }
+        .search-container input { border: none; background: transparent; color: #ffffff; font-family: inherit; font-size: 14px; outline: none; padding: 6px; width: 180px; }
+        .search-container button { background: #4ad9a1; border: none; color: #060b14; padding: 8px 16px; border-radius: 10px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.2s; }
+        .search-container button:hover { opacity: 0.9; }
+
         .session-badge { display: inline-flex; align-items: center; padding: 6px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; border-radius: 999px; background: rgba(74, 217, 161, 0.12); color: #c8ffe4; font-weight: 600; }
         .company-badge { width: 64px; height: 64px; border-radius: 18px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); border: 1px solid var(--panel-border); color: #ffffff; font-size: 22px; font-weight: 700; }
         
-        /* Advanced Twin Column Grid Split */
+        /* Two Column Architecture Split */
         .dashboard-grid { display: grid; grid-template-columns: 1fr 420px; gap: 28px; align-items: start; }
         .left-column, .right-column { display: flex; flex-direction: column; gap: 28px; }
 
@@ -119,6 +126,15 @@
         .tf-btn:hover { color: #ffffff; }
         .tf-btn.active { background: #4ad9a1; color: #060b14; }
         
+        /* FEATURE 3: Real-Time News Feed Panel Styling */
+        .news-panel { background: #0f172b; border-color: rgba(255,255,255,0.05); }
+        .news-item { display: flex; flex-direction: column; gap: 6px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); text-decoration: none; transition: transform 0.2s ease; }
+        .news-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .news-item:hover { transform: translateX(2px); }
+        .news-item__headline { margin: 0; font-size: 14px; font-weight: 600; color: #edf2ff; line-height: 1.5; }
+        .news-item__headline:hover { color: #4ad9a1; }
+        .news-item__meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); }
+
         /* Data Deck Metrics Grid */
         .overview-card { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
         .stat { padding: 14px 18px; border-radius: 16px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease; }
@@ -164,7 +180,14 @@
                     <p class="header__subtitle" id="stock-subtitle">Exchange · Sector</p>
                 </div>
             </div>
-            <span class="session-badge" id="stock-session">Regular</span>
+            
+            <div style="display:flex; align-items:center; gap:16px;">
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Search Ticker (e.g. NVDA, BTC-USD)" onkeydown="if(event.key==='Enter') executeSearch()">
+                    <button onclick="executeSearch()">Explore</button>
+                </div>
+                <span class="session-badge" id="stock-session">Regular</span>
+            </div>
         </div>
 
         <div class="dashboard-grid">
@@ -220,6 +243,11 @@
                     <div class="insight-list" id="insight-target"></div>
                 </div>
 
+                <div class="dashboard-panel news-panel">
+                    <p style="margin: 0 0 16px; font-size: 16px; font-weight: 700; color:#ffffff;">Real-Time Headwinds & News</p>
+                    <div id="news-target"></div>
+                </div>
+
                 <div class="dashboard-panel overview-card">
                     <div class="stat"><span class="stat__label">Prev Close</span><span class="stat__value" id="o-pclose">--</span></div>
                     <div class="stat"><span class="stat__label">Open</span><span class="stat__value" id="o-open">--</span></div>
@@ -249,9 +277,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
         // PASTE YOUR ACTIVE LOCALTUNNEL LINK HERE
-        const TUNNEL_URL = "https://slow-mirrors-boil.loca.lt/api/stocks";
+        const TUNNEL_URL = " https://slow-mirrors-boil.loca.lt/api/stocks";
 
-        let globalData = {}; let activeChart = null; let currentSelectedSymbol = "";
+        let globalData = {}; let activeChart = null; let currentActiveObject = null;
 
         fetch(TUNNEL_URL)
             .then(res => res.json())
@@ -262,7 +290,7 @@
             const target = document.getElementById('ticker-target');
             const loops = [...Object.values(globalData), ...Object.values(globalData), ...Object.values(globalData)];
             target.innerHTML = loops.map(stock => `
-                <div class="ticker__item" onclick="displayProfile('${stock.symbol}')">
+                <div class="ticker__item" onclick="displayProfileFromCache('${stock.symbol}')">
                     <span class="ticker__symbol">${stock.symbol}</span>
                     <span class="ticker__price">${stock.price}</span>
                     <span class="ticker__change ${stock.is_positive ? 'up-trend' : 'down-trend'}">
@@ -272,9 +300,40 @@
             `).join('');
         }
 
-        function displayProfile(symbol) {
-            currentSelectedSymbol = symbol;
-            const stock = globalData[symbol];
+        // FEATURE 1 IMPLEMENTATION: Dynamic API Fetch Look-up Engine for searched items
+        function executeSearch() {
+            const rawVal = document.getElementById('search-input').value;
+            if (!rawVal) return;
+            const targetSymbol = rawVal.trim().toUpperCase();
+            
+            // Derive single endpoint look-up URL string mapping parameters
+            const singleLookupUrl = TUNNEL_URL.replace('/api/stocks', `/api/stock/${targetSymbol}`);
+            
+            document.getElementById('search-input').placeholder = "Querying pipeline...";
+            
+            fetch(singleLookupUrl)
+                .then(res => {
+                    if(!res.ok) throw new Error("Ticker execution fault.");
+                    return res.json();
+                })
+                .then(stockData => {
+                    document.getElementById('search-input').value = "";
+                    document.getElementById('search-input').placeholder = "Search Ticker (e.g. NVDA)";
+                    renderCoreUI(stockData);
+                })
+                .catch(err => {
+                    alert(`Ticker Symbol "${targetSymbol}" could not be retrieved. Ensure syntax fits Yahoo Finance parameters (e.g., AAPL, BTC-USD).`);
+                    document.getElementById('search-input').value = "";
+                    document.getElementById('search-input').placeholder = "Search Ticker (e.g. NVDA)";
+                });
+        }
+
+        function displayProfileFromCache(symbol) {
+            renderCoreUI(globalData[symbol]);
+        }
+
+        function renderCoreUI(stock) {
+            currentActiveObject = stock;
             document.getElementById('detail-container').style.display = 'block';
             
             document.getElementById('stock-badge').innerText = stock.symbol;
@@ -319,6 +378,18 @@
                 <div class="insight-item"><strong>${i.title}</strong><p style="margin:0; color:#cbd5e1; font-size:13px;">${i.detail}</p></div>
             `).join('');
 
+            // FEATURE 3 NEWS RENDERING: Dynamic live layout builder mapping array items
+            if(stock.news && stock.news.length > 0) {
+                document.getElementById('news-target').innerHTML = stock.news.map(n => `
+                    <a class="news-item" href="${n.link}" target="_blank">
+                        <p class="news-item__headline">${n.title}</p>
+                        <div class="news-item__meta"><span>${n.publisher}</span><span>${n.time}</span></div>
+                    </a>
+                `).join('');
+            } else {
+                document.getElementById('news-target').innerHTML = `<p style="font-size:13px; color:var(--text-muted); margin:0;">No global headlines found for this asset index code block.</p>`;
+            }
+
             const trend = document.getElementById('stock-badge-trend');
             const icon = document.getElementById('trend-icon');
             if (stock.is_positive) { trend.className = "hero-price__change up-bg"; icon.innerText = "▲"; }
@@ -330,14 +401,12 @@
         }
 
         function changeTimeframe(buttonElement, tfKey) {
-            if (!currentSelectedSymbol) return;
+            if (!currentActiveObject) return;
             
-            // Toggle active styling states on selectors
             document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
             buttonElement.classList.add('active');
             
-            const stock = globalData[currentSelectedSymbol];
-            const tfData = stock.history[tfKey];
+            const tfData = currentActiveObject.history[tfKey];
 
             if (activeChart) activeChart.destroy();
             const ctx = document.getElementById('priceChart').getContext('2d');
@@ -345,11 +414,11 @@
             activeChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: tfData.dates,
+                    labels: tfData ? tfData.dates : [],
                     datasets: [{
-                        label: 'Price', data: tfData.prices,
-                        borderColor: stock.is_positive ? '#4ad9a1' : '#ff3b30', 
-                        backgroundColor: stock.is_positive ? 'rgba(74, 217, 161, 0.05)' : 'rgba(255, 59, 48, 0.05)',
+                        label: 'Price', data: tfData ? tfData.prices : [],
+                        borderColor: currentActiveObject.is_positive ? '#4ad9a1' : '#ff3b30', 
+                        backgroundColor: currentActiveObject.is_positive ? 'rgba(74, 217, 161, 0.05)' : 'rgba(255, 59, 48, 0.05)',
                         tension: tfKey === '1D' || tfKey === '1W' ? 0.15 : 0.25, 
                         pointRadius: tfKey === '1D' || tfKey === '1W' ? 0 : 1, 
                         borderWidth: 2, fill: true
