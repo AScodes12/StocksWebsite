@@ -97,6 +97,24 @@
         .hero-price__value { font-size: 58px; font-weight: 800; letter-spacing: -0.04em; color: #ffffff; line-height: 1; }
         .hero-price__change { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; background: rgba(255,255,255,0.06); font-size: 14px; font-weight: 600; }
         
+        /* FEATURE B: Why It's Moving Context Snippet */
+        .mover-panel {
+            background: linear-gradient(90deg, rgba(74, 217, 161, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%);
+            border: 1px solid rgba(74, 217, 161, 0.2);
+            border-radius: 20px;
+            padding: 20px;
+            display: none; /* Injected via JS */
+            align-items: flex-start;
+            gap: 14px;
+        }
+        .mover-panel.down-signal {
+            background: linear-gradient(90deg, rgba(255, 59, 48, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%);
+            border: 1px solid rgba(255, 59, 48, 0.2);
+        }
+        .mover-icon { font-size: 20px; padding: 6px; border-radius: 12px; background: rgba(255,255,255,0.04); line-height: 1; }
+        .mover-content h4 { margin: 0 0 4px; font-size: 15px; font-weight: 700; color: #ffffff; }
+        .mover-content p { margin: 0; font-size: 13.5px; color: #cbd5e1; line-height: 1.6; }
+
         .hero-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; min-width: 320px; }
         .metric-pill { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 12px; color: #d9e6fc; font-size: 13px; text-align: left; display: flex; flex-direction: column; gap: 4px; }
         .metric-pill span:first-child { font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; }
@@ -109,13 +127,19 @@
         .tf-btn:hover { color: #ffffff; }
         .tf-btn.active { background: #4ad9a1; color: #060b14; }
         
+        /* FEATURE 2: News Panel & Sentiment Badges */
         .news-panel { background: #0f172b; }
-        .news-item { display: flex; flex-direction: column; gap: 6px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); text-decoration: none; transition: transform 0.2s ease; }
+        .news-item { display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); text-decoration: none; transition: transform 0.2s ease; }
         .news-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         .news-item:hover { transform: translateX(3px); }
         .news-item__headline { margin: 0; font-size: 14px; font-weight: 600; color: #edf2ff; line-height: 1.5; }
         .news-item:hover .news-item__headline { color: #4ad9a1; }
-        .news-item__meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); }
+        .news-item__meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); }
+        
+        .sentiment-tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.02em; text-transform: uppercase; }
+        .sentiment-tag.bullish { background: rgba(74, 217, 161, 0.15); color: #4ad9a1; }
+        .sentiment-tag.bearish { background: rgba(255, 59, 48, 0.15); color: #ff5b52; }
+        .sentiment-tag.neutral { background: rgba(255, 255, 255, 0.06); color: #94a3b8; }
 
         .overview-card { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
         .stat { padding: 14px 18px; border-radius: 16px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
@@ -161,7 +185,7 @@
             
             <div style="display:flex; align-items:center; gap:16px;">
                 <div class="search-container">
-                    <input type="text" id="search-input" placeholder="Search Ticker (e.g. NVDA, BTC-USD)" onkeydown="if(event.key==='Enter') executeSearch()">
+                    <input type="text" id="search-input" placeholder="Search Ticker (e.g. NVDA)" onkeydown="if(event.key==='Enter') executeSearch()">
                     <button onclick="executeSearch()">Explore</button>
                 </div>
                 <span class="session-badge" id="stock-session">--</span>
@@ -185,6 +209,14 @@
                         <div class="metric-pill"><span>PE Ratio</span><span id="m-pe">--</span></div>
                         <div class="metric-pill"><span>Volume</span><span id="m-vol">--</span></div>
                         <div class="metric-pill"><span>Avg Volume</span><span id="m-avol">--</span></div>
+                    </div>
+                </div>
+
+                <div class="mover-panel" id="mover-banner">
+                    <div class="mover-icon" id="mover-icon">📈</div>
+                    <div class="mover-content">
+                        <h4>Why it's moving today</h4>
+                        <p id="mover-text">--</p>
                     </div>
                 </div>
 
@@ -240,7 +272,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
         // PASTE YOUR ACTIVE LOCALTUNNEL LINK HERE
-        const TUNNEL_URL = "https://slow-mirrors-boil.loca.lt/api/stocks";
+        const TUNNEL_URL = " https://slow-mirrors-boil.loca.lt/api/stocks";
 
         let globalData = {}; let activeChart = null; let currentActiveObject = null;
 
@@ -249,7 +281,6 @@
             .then(data => { 
                 globalData = data; 
                 populateTicker(); 
-                // Load first stock in watchlist automatically on entry
                 const firstTicker = Object.keys(data)[0];
                 if(firstTicker) renderCoreUI(data[firstTicker]);
             })
@@ -326,13 +357,49 @@
             document.getElementById('d-short').innerText = stock.short_ratio;
             document.getElementById('d-consensus').innerText = stock.consensus;
 
+            // --- JAVASCRIPT IMPLEMENTATION OF FEATURE B ("Why It's Moving") ---
+            const moverBanner = document.getElementById('mover-banner');
+            const changePercentNum = parseFloat(stock.change.replace(/[+%]/g, ''));
+            
+            if (!isNaN(changePercentNum) && Math.abs(changePercentNum) >= 4.0) {
+                const isClimbing = changePercentNum > 0;
+                moverBanner.style.display = 'flex';
+                if (isClimbing) {
+                    moverBanner.className = "mover-panel";
+                    document.getElementById('mover-icon').innerText = "📈";
+                    document.getElementById('mover-text').innerText = `Shares are climbing significantly today (${stock.change}) on high buying velocity across technical momentum indicators.`;
+                } else {
+                    moverBanner.className = "mover-panel down-signal";
+                    document.getElementById('mover-icon').innerText = "📉";
+                    document.getElementById('mover-text').innerText = `Shares are dropping noticeably down today (${stock.change}) as sell volume spikes outside traditional range bounds.`;
+                }
+            } else {
+                moverBanner.style.display = 'none';
+            }
+
+            // --- JAVASCRIPT IMPLEMENTATION OF FEATURE 2 (Sentiment Scanned News) ---
             if(stock.news && stock.news.length > 0) {
-                document.getElementById('news-target').innerHTML = stock.news.map(n => `
-                    <a class="news-item" href="${n.link}" target="_blank">
-                        <p class="news-item__headline">${n.title}</p>
-                        <div class="news-item__meta"><span>${n.publisher}</span><span>${n.time}</span></div>
-                    </a>
-                `).join('');
+                document.getElementById('news-target').innerHTML = stock.news.map(n => {
+                    const headlineLower = n.title.toLowerCase();
+                    let sentiment = "neutral";
+                    
+                    // Client-side heuristics
+                    if (["surge", "beat", "rally", "growth", "raised", "upgrade", "higher", "gain"].some(w => headlineLower.includes(w))) {
+                        sentiment = "bullish";
+                    } else if (["drop", "miss", "plummet", "cut", "downgrade", "lower", "fall", "loss", "slump"].some(w => headlineLower.includes(w))) {
+                        sentiment = "bearish";
+                    }
+
+                    return `
+                        <a class="news-item" href="${n.link}" target="_blank">
+                            <p class="news-item__headline">${n.title}</p>
+                            <div class="news-item__meta">
+                                <span>${n.publisher} · ${n.time}</span>
+                                <span class="sentiment-tag ${sentiment}">${sentiment}</span>
+                            </div>
+                        </a>
+                    `;
+                }).join('');
             } else {
                 document.getElementById('news-target').innerHTML = `<p style="font-size:13px; color:var(--text-muted); margin:0; padding: 12px 0;">No media stories currently compiled for this asset index code block.</p>`;
             }
