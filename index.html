@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stock Ticker</title>
+    <style>
+        :root {
+            --bg-color: #1a1b1f;
+            --text-color: #ffffff;
+            --up-color: #00c805;
+            --down-color: #ff3b30;
+            --border-color: #2a2b30;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+
+        /* Ticker Container */
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            border-bottom: 1px solid var(--border-color);
+            box-sizing: border-box;
+            padding: 10px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Moving Track */
+        .ticker {
+            display: flex;
+            white-space: nowrap;
+            padding-left: 100%;
+            animation: ticker 30s linear infinite;
+        }
+
+        /* Pause on hover so users can read/click */
+        .ticker-wrap:hover .ticker {
+            animation-play-state: paused;
+        }
+
+        /* Individual Stock Item */
+        .ticker__item {
+            display: inline-flex;
+            align-items: center;
+            padding: 0 25px;
+            border-right: 1px solid var(--border-color);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .ticker__symbol {
+            font-weight: 700;
+            margin-right: 8px;
+        }
+
+        .ticker__price {
+            margin-right: 8px;
+        }
+
+        .ticker__change {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Directional Colors */
+        .up { color: var(--up-color); }
+        .down { color: var(--down-color); }
+
+        .up::before { content: "▲ "; font-size: 10px; margin-right: 2px; }
+        .down::before { content: "▼ "; font-size: 10px; margin-right: 2px; }
+
+        /* Animation */
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ticker-wrap">
+        <div class="ticker" id="stock-ticker">
+            </div>
+    </div>
+
+    <script>
+        // 1. YOUR DATA SOURCE
+        // Replace this array with live data from an API fetch or your own database
+        const stockData = [
+            { symbol: "^DJI", name: "Dow Jones", price: 39127.14, change: 68.42, changePercent: 0.17 },
+            { symbol: "^IXIC", name: "Nasdaq", price: 17771.65, change: -140.46, changePercent: -0.78 },
+            { symbol: "AAPL", name: "Apple Inc.", price: 214.38, change: 4.68, changePercent: 2.23 },
+            { symbol: "MSFT", name: "Microsoft Corp.", price: 445.87, change: -2.11, changePercent: -0.47 },
+            { symbol: "NVDA", name: "NVIDIA Corp.", price: 127.40, change: -3.38, changePercent: -2.58 },
+            { symbol: "TSLA", name: "Tesla Inc.", price: 181.57, change: 3.23, changePercent: 1.81 },
+            { symbol: "AMZN", name: "Amazon.com Inc.", price: 189.08, change: 2.98, changePercent: 1.60 }
+        ];
+
+        // 2. RENDER FUNCTION
+        function renderTicker(data) {
+            const tickerContainer = document.getElementById('stock-ticker');
+            tickerContainer.innerHTML = ''; // Clear existing content
+
+            // Clone the items to create a seamless infinite loop effect
+            const displayData = [...data, ...data]; 
+
+            displayData.forEach(stock => {
+                const isPositive = stock.change >= 0;
+                const changeClass = isPositive ? 'up' : 'down';
+                const sign = isPositive ? '+' : '';
+
+                const itemHtml = `
+                    <div class="ticker__item">
+                        <span class="ticker__symbol">${stock.symbol}</span>
+                        <span class="ticker__price">$${stock.price.toFixed(2)}</span>
+                        <span class="ticker__change ${changeClass}">
+                            ${sign}${stock.change.toFixed(2)} (${sign}${stock.changePercent.toFixed(2)}%)
+                        </span>
+                    </div>
+                `;
+                tickerContainer.innerHTML += itemHtml;
+            });
+        }
+
+        // Initialize the ticker
+        renderTicker(stockData);
+
+        // 3. LIVE UPDATE EXAMPLE
+        // If you connect a live API, you can call renderTicker(newData) inside a setInterval
+    </script>
+</body>
+</html>
