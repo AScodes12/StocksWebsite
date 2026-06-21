@@ -48,19 +48,36 @@
         .ticker__item { 
             display: inline-flex; 
             align-items: center; 
-            padding: 0 32px; 
+            padding: 0 24px; 
             font-size: 15px; 
             font-weight: 500; 
             border-left: 1px solid rgba(255,255,255,0.08); 
             cursor: pointer; 
             transition: color 0.2s ease;
+            position: relative;
         }
         .ticker__item:hover { color: #ffffff; }
         .ticker__item:first-child { border-left: none; }
         .ticker__symbol { font-weight: 700; color: #ffffff; margin-right: 12px; }
         .ticker__price { font-weight: 600; margin-right: 10px; color: #e7eaf6; }
-        .ticker__change { font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+        .ticker__change { font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; margin-right: 12px; }
         
+        .ticker__remove {
+            background: rgba(255, 59, 48, 0.15);
+            color: var(--down-color);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 11px;
+            padding: 2px 6px;
+            transition: all 0.2s;
+        }
+        .ticker__remove:hover {
+            background: var(--down-color);
+            color: #ffffff;
+        }
+
         .container { max-width: 1340px; margin: 0 auto; display: none; }
         
         .header { 
@@ -77,6 +94,16 @@
         .search-container input { border: none; background: transparent; color: #ffffff; font-family: inherit; font-size: 14px; outline: none; padding: 6px; width: 190px; }
         .search-container button { background: #4ad9a1; border: none; color: #060b14; padding: 8px 16px; border-radius: 10px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.2s; }
         .search-container button:hover { opacity: 0.9; }
+        
+        .btn-add-watchlist {
+            background: rgba(74, 217, 161, 0.1) !important;
+            color: #4ad9a1 !important;
+            border: 1px solid rgba(74, 217, 161, 0.3) !important;
+        }
+        .btn-add-watchlist:hover {
+            background: #4ad9a1 !important;
+            color: #060b14 !important;
+        }
 
         .session-badge { display: inline-flex; align-items: center; padding: 6px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: #edf2ff; font-weight: 600; }
         .company-badge { width: 64px; height: 64px; border-radius: 18px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); border: 1px solid var(--panel-border); color: #ffffff; font-size: 20px; font-weight: 700; }
@@ -193,6 +220,7 @@
                 <div class="search-container">
                     <input type="text" id="search-input" placeholder="Search Ticker (e.g. NVDA)" onkeydown="if(event.key==='Enter') executeSearch()">
                     <button onclick="executeSearch()">Explore</button>
+                    <button id="add-watchlist-btn" class="btn-add-watchlist" style="display:none;" onclick="addToWatchlist()">+ Track</button>
                 </div>
                 <span class="session-badge" id="stock-session">--</span>
             </div>
@@ -306,26 +334,37 @@
 
         let globalData = {}; let activeChart = null; let currentActiveObject = null;
 
-        fetch(`${TUNNEL_URL}/api/stocks`)
-            .then(res => res.json())
-            .then(data => { 
-                globalData = data; 
-                populateTicker(); 
-                const firstTicker = Object.keys(data)[0];
-                if(firstTicker) renderCoreUI(data[firstTicker]);
-            })
-            .catch(err => { document.getElementById('ticker-target').innerText = "Data Transmission Stream Broken."; });
+        function refreshPipeline() {
+            fetch(`${TUNNEL_URL}/api/stocks`)
+                .then(res => res.json())
+                .then(data => { 
+                    globalData = data; 
+                    populateTicker(); 
+                    if (!currentActiveObject && Object.keys(data).length > 0) {
+                        renderCoreUI(data[Object.keys(data)[0]]);
+                    }
+                })
+                .catch(err => { document.getElementById('ticker-target').innerText = "Data Transmission Stream Broken."; });
+        }
+
+        refreshPipeline();
 
         function populateTicker() {
             const target = document.getElementById('ticker-target');
+            if (Object.keys(globalData).length === 0) {
+                target.innerHTML = '<div class="ticker__item">Watchlist Empty. Search tickers to add assets.</div>';
+                return;
+            }
+            // Loop data twice for continuous smooth scrolling effect
             const loops = [...Object.values(globalData), ...Object.values(globalData)];
-            target.innerHTML = loops.map(stock => `
-                <div class="ticker__item" onclick="renderCoreUI(globalData['${stock.symbol}'])">
+            target.innerHTML = loops.map((stock, i) => `
+                <div class="ticker__item" onclick="event.stopPropagation(); renderCoreUI(globalData['${stock.symbol}'])">
                     <span class="ticker__symbol">${stock.symbol}</span>
                     <span class="ticker__price">${stock.price}</span>
                     <span class="ticker__change ${stock.is_positive ? 'up-trend' : 'down-trend'}">
                         <span>${stock.is_positive ? '▲' : '▼'}</span><span>${stock.change}</span>
                     </span>
+                    <button class="ticker__remove" onclick="event.stopPropagation(); removeFromWatchlist('${stock.symbol}')">×</button>
                 </div>
             `).join('');
         }
@@ -354,10 +393,50 @@
                 });
         }
 
+        function addToWatchlist() {
+            if (!currentActiveObject) return;
+            fetch(`${TUNNEL_URL}/api/watchlist/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol: currentActiveObject.symbol })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('add-watchlist-btn').style.display = 'none';
+                    refreshPipeline();
+                }
+            });
+        }
+
+        function removeFromWatchlist(symbol) {
+            fetch(`${TUNNEL_URL}/api/watchlist/remove`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol: symbol })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    if (currentActiveObject && currentActiveObject.symbol === symbol) {
+                        currentActiveObject = null;
+                    }
+                    refreshPipeline();
+                }
+            });
+        }
+
         function renderCoreUI(stock) {
             if (!stock) return;
             currentActiveObject = stock;
             document.getElementById('detail-container').style.display = 'block';
+            
+            // Toggle "+ Track" visibility based on current presence
+            if (globalData[stock.symbol]) {
+                document.getElementById('add-watchlist-btn').style.display = 'none';
+            } else {
+                document.getElementById('add-watchlist-btn').style.display = 'inline-block';
+            }
             
             document.getElementById('stock-badge').innerText = stock.symbol;
             document.getElementById('stock-title').innerText = stock.name;
@@ -388,11 +467,10 @@
 
             document.getElementById('consensus-rating').innerText = stock.rating || "Hold";
             document.getElementById('consensus-score').innerText = `Mean: ${stock.consensus}`;
+            
             let scoreNum = parseFloat(stock.consensus);
             if (!isNaN(scoreNum)) {
-                // Math inverted: 1.0 (Strong Buy) becomes 100%, 5.0 (Underperform) becomes 0%
                 let percentageFill = Math.min(Math.max(((scoreNum - 1) / 4) * 100, 0), 100);
-                // Invert it so 100% means the far right (Strong Buy)
                 let finalDirection = 100 - percentageFill;
                 document.getElementById('consensus-fill').style.width = `${Math.max(finalDirection, 5)}%`;
             } else {
@@ -423,7 +501,6 @@
                 moverBanner.style.display = 'none';
             }
 
-            // RE-ENGINEERED CLIENT SIDE SENTIMENT SCANNERS
             if(stock.news && stock.news.length > 0) {
                 document.getElementById('news-target').innerHTML = stock.news.map(n => {
                     let headlineLower = String(n.title).toLowerCase();
@@ -431,8 +508,6 @@
                     let combinedText = headlineLower + " " + publisherLower;
                     
                     let sent = "neutral";
-                    
-                    // Broadening matching arrays to guarantee matching targets
                     const bullKeywords = ["surge", "beat", "rally", "growth", "raised", "upgrade", "higher", "gains", "buy", "bull", "soars", "jump", "positive", "profit", "win", "climb", "record", "outlook", "strong"];
                     const bearKeywords = ["drop", "miss", "plummet", "cut", "downgrade", "lower", "fall", "loss", "slump", "bear", "sinks", "slide", "negative", "warns", "plunge", "decline", "anxiety", "theft", "losses"];
                     
@@ -441,7 +516,6 @@
                     } else if (bearKeywords.some(word => combinedText.includes(word))) {
                         sent = "bearish";
                     } else {
-                        // Dynamic Fallback assignment if text is ambiguous to avoid uniform list layouts
                         let hash = combinedText.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
                         if (hash % 3 === 0) sent = "bullish";
                         else if (hash % 3 === 1) sent = "bearish";
@@ -491,9 +565,9 @@
                         borderColor: currentActiveObject.is_positive ? '#4ad9a1' : '#ff3b30', 
                         backgroundColor: currentActiveObject.is_positive ? 'rgba(74, 217, 161, 0.03)' : 'rgba(255, 59, 48, 0.03)',
                         tension: 0.1, 
-                        pointRadius: 2,               // Visible point nodes
-                        pointHoverRadius: 7,          // Large interaction dots
-                        pointHitRadius: 40,           // Massive proximity capture boundary
+                        pointRadius: 2,
+                        pointHoverRadius: 7,
+                        pointHitRadius: 40,
                         borderWidth: 2, 
                         fill: true
                     }]
@@ -501,10 +575,7 @@
                 options: {
                     responsive: true, 
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false              // Horizontal plane sweeping drag tracker enabled
-                    },
+                    interaction: { mode: 'index', intersect: false },
                     plugins: { 
                         legend: { display: false },
                         tooltip: {
