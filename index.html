@@ -390,8 +390,11 @@
             document.getElementById('consensus-score').innerText = `Mean: ${stock.consensus}`;
             let scoreNum = parseFloat(stock.consensus);
             if (!isNaN(scoreNum)) {
-                let percentageFill = Math.min(Math.max(((5 - scoreNum) / 4) * 100, 5), 100);
-                document.getElementById('consensus-fill').style.width = `${percentageFill}%`;
+                // Math inverted: 1.0 (Strong Buy) becomes 100%, 5.0 (Underperform) becomes 0%
+                let percentageFill = Math.min(Math.max(((scoreNum - 1) / 4) * 100, 0), 100);
+                // Invert it so 100% means the far right (Strong Buy)
+                let finalDirection = 100 - percentageFill;
+                document.getElementById('consensus-fill').style.width = `${Math.max(finalDirection, 5)}%`;
             } else {
                 document.getElementById('consensus-fill').style.width = '50%';
             }
